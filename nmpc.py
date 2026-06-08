@@ -4,21 +4,26 @@ from tqdm import tqdm
 import cart
 
 
-N_ARMS = 3
+N_ARMS = 4
 DT = 1e-3
-T = 6.0
-T_CTRL = 1e-3#0.02
+T = 5.0
+T_CTRL = 1e-2#0.02
 TF = 1.0
-N_HORIZON = 2*25
+N_HORIZON = 6*25
 U_MAX = 2*80.0
 X_MAX = 4.0
 X_WALL = 6.0
+MASS_MISMATCH = 0.0
+MISMATCH_SEED = 1
+ARM_WEIGHT_MIN = 0.25
+ARM_WEIGHT_MAX = 1.0
 IC_X = 0.0
-IC_TH_OFFSET = 0.04 + np.pi/2
+IC_TH_OFFSET = 0.04 + np.pi
 IC_DX = 0.0
 IC_DTH = 0.0
 QP_SOLVER = "PARTIAL_CONDENSING_HPIPM"
-INTEGRATOR = "IRK"
+INTEGRATOR = "ERK" #"IRK"
+# NLP_SOLVER = "SQP" #"SQP_RTI"
 NLP_SOLVER = "SQP_RTI"
 
 
@@ -35,6 +40,11 @@ def _require_acados():
 def upright_state(n=N_ARMS, x=0.0):
     z = np.zeros(2 * (n + 1)); z[0] = x; z[1 : n + 1] = np.pi
     return z
+
+
+def arm_priority_weights(n=N_ARMS, w_min=ARM_WEIGHT_MIN, w_max=ARM_WEIGHT_MAX):
+    if n == 1: return np.array([w_max])
+    return np.linspace(w_min, w_max, n)
 
 
 def demo_initial_state(n=N_ARMS, x=IC_X, th_offset=IC_TH_OFFSET, dx=IC_DX, dth=IC_DTH):
@@ -77,8 +87,9 @@ def make_ocp(n=N_ARMS, tf=TF, n_horizon=N_HORIZON, u_max=U_MAX, x_max=X_MAX):
     ocp = AcadosOcp(); ocp.model = model
     ocp.solver_options.N_horizon = n_horizon; ocp.solver_options.tf = tf
 
-    wy = np.r_[2.0, 0.2, np.full(n, 500.0), np.full(n, 500.0), np.full(n, 10.0), 0.02]
-    wy_e = np.r_[10.0, 1.0, np.full(n, 1500.0), np.full(n, 1500.0), np.full(n, 50.0)]
+    aw = arm_priority_weights(n)
+    wy = np.r_[2.0, 0.2, 500.0 * aw, 500.0 * aw, 10.0 * aw, 0.02]
+    wy_e = np.r_[10.0, 1.0, 1500.0 * aw, 1500.0 * aw, 50.0 * aw]
     ocp.cost.cost_type = "NONLINEAR_LS"; ocp.cost.W = np.diag(wy); ocp.cost.yref = np.zeros(ny)
     ocp.cost.cost_type_e = "NONLINEAR_LS"; ocp.cost.W_e = np.diag(wy_e); ocp.cost.yref_e = np.zeros(ny_e)
 
@@ -107,12 +118,13 @@ class NMPC:
         return float(np.clip(self.solver.get(0, "u")[0], -self.u_max, self.u_max))
 
 
-def simulate_nmpc(z0, n=N_ARMS, t=T, dt=DT, t_ctrl=T_CTRL, show_progress=True):
+def simulate_nmpc(z0, n=N_ARMS, t=T, dt=DT, t_ctrl=T_CTRL, mass_mismatch=MASS_MISMATCH, mismatch_seed=MISMATCH_SEED, show_progress=True):
     ts = np.arange(0, t + dt, dt); z = np.zeros((len(ts), len(z0))); u = np.zeros(len(ts))
+    plant_cart_mass, plant_m = cart.random_masses(n, pct=mass_mismatch, seed=mismatch_seed)
     ctrl = NMPC(n=n); z[0] = z0; hold = 0.0; next_ctrl = 0.0
     for k in tqdm(range(len(ts) - 1), disable=not show_progress):
         if ts[k] >= next_ctrl: hold = ctrl(z[k]); next_ctrl += t_ctrl
-        u[k] = hold; z[k + 1] = cart.rk4_step(z[k], dt=dt, u=hold, n=n, x_wall=X_WALL)
+        u[k] = hold; z[k + 1] = cart.rk4_step(z[k], dt=dt, u=hold, n=n, cart_mass=plant_cart_mass, m=plant_m, x_wall=X_WALL)
     u[-1] = u[-2]
     return ts, z, u
 

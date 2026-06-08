@@ -10,6 +10,8 @@ T = 8.0
 T_CTRL = 0.02
 U_MAX = 80.0
 X_WALL = 6.0
+MASS_MISMATCH = 0.01
+MISMATCH_SEED = 1
 KP = 500.0
 KI = 0.0
 KD = 80.0
@@ -41,12 +43,13 @@ def policy(z, pid, dt_ctrl=T_CTRL):
     return float(np.clip(u, -U_MAX, U_MAX))
 
 
-def simulate_pid(z0, t=T, dt=DT, t_ctrl=T_CTRL, show_progress=True):
+def simulate_pid(z0, t=T, dt=DT, t_ctrl=T_CTRL, mass_mismatch=MASS_MISMATCH, mismatch_seed=MISMATCH_SEED, show_progress=True):
     ts = np.arange(0, t + dt, dt); z = np.zeros((len(ts), len(z0))); u = np.zeros(len(ts))
+    plant_cart_mass, plant_m = cart.random_masses(N, pct=mass_mismatch, seed=mismatch_seed)
     pid = PID(); z[0] = z0; hold = policy(z0, pid, t_ctrl); next_ctrl = 0.0
     for k in tqdm(range(len(ts) - 1), disable=not show_progress):
         if ts[k] >= next_ctrl: hold = policy(z[k], pid, t_ctrl); next_ctrl += t_ctrl
-        u[k] = hold; z[k + 1] = cart.rk4_step(z[k], dt=dt, u=hold, n=N, x_wall=X_WALL)
+        u[k] = hold; z[k + 1] = cart.rk4_step(z[k], dt=dt, u=hold, n=N, cart_mass=plant_cart_mass, m=plant_m, x_wall=X_WALL)
     u[-1] = u[-2]
     return ts, z, u
 

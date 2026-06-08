@@ -14,6 +14,8 @@ T = 10.0
 SHOW_PLOTS = True
 WALL_X = 6.0
 WALL_RESTITUTION = 0.0
+MASS_MISMATCH = 0.01
+MISMATCH_SEED = 10
 
 
 def _vec(x, n):
@@ -25,6 +27,13 @@ def arm_params(n=N_ARMS, m=LINK_MASS, l=LINK_LENGTH):
     m, l = _vec(m, n), _vec(l, n)
     if len(m) != n or len(l) != n: raise ValueError("m and l must be scalars or length n")
     return m, l, np.array([np.sum(m[i:]) for i in range(n)])
+
+
+def random_masses(n=N_ARMS, cart_mass=M, link_mass=LINK_MASS, pct=MASS_MISMATCH, seed=MISMATCH_SEED):
+    rng = np.random.default_rng(seed)
+    cart_mass = cart_mass * (1 + rng.uniform(-pct, pct))
+    link_mass = _vec(link_mass, n) * (1 + rng.uniform(-pct, pct, n))
+    return float(cart_mass), link_mass
 
 
 def dynamics(z, u=0.0, n=N_ARMS, cart_mass=M, m=LINK_MASS, l=LINK_LENGTH, g=G):
