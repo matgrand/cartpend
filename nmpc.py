@@ -31,6 +31,12 @@ def _require_acados():
     try:
         import casadi as ca
         from acados_template import AcadosModel, AcadosOcp, AcadosOcpSolver
+        import shutil, os
+        if os.path.exists('c_generated_code'): shutil.rmtree('c_generated_code')
+        for file in os.listdir('.'):
+            if file.endswith('.json'):
+                os.remove(file)
+        os.environ["ACADOS_SOURCE_DIR"] = f"{os.path.expanduser('~')}/repos/acados"
     except ModuleNotFoundError as e:
         msg = "NMPC needs casadi and acados_template installed and ACADOS_SOURCE_DIR/LD_LIBRARY_PATH configured."
         raise ModuleNotFoundError(msg) from e
@@ -102,7 +108,7 @@ def make_ocp(n=N_ARMS, tf=TF, n_horizon=N_HORIZON, u_max=U_MAX, x_max=X_MAX):
     ocp.solver_options.integrator_type = INTEGRATOR
     ocp.solver_options.nlp_solver_type = NLP_SOLVER
     ocp.solver_options.globalization = "MERIT_BACKTRACKING"
-    return ocp, AcadosOcpSolver(ocp, json_file=f"acados_ocp_{model.name}.json")
+    return ocp, AcadosOcpSolver(ocp, json_file=f"acados_ocp_{model.name}.json", verbose=False)
 
 
 class NMPC:
