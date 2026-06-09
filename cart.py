@@ -2,13 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from tqdm import tqdm
+from numpy import pi as π
 
 
 G = 9.81
 M = 1.0
 LINK_MASS = 0.2
 LINK_LENGTH = 1.0
-N_ARMS = 1
+N_ARMS = 3
 DT = 1e-3
 T = 10.0
 SHOW_PLOTS = True
@@ -128,7 +129,6 @@ def animate_trajectory(traj, dt=DT, n=N_ARMS, l=LINK_LENGTH, u=None, u_scale=0.0
 
 
 if __name__ == "__main__":
-    n = 1
-    z0 = np.zeros(2 * (n + 1)); z0[1] = 0.7; z0[n + 2] = 0.0
-    ts, traj = simulate(z0, t=8.0, dt=2e-3, u=0.0, n=n)
-    animate_trajectory(traj, dt=2e-3, n=n, stride=10)
+    z0 = np.zeros(2 * (N_ARMS + 1)); z0[1:N_ARMS+1] = π + np.random.uniform(-0.1, 0.1, N_ARMS); z0[N_ARMS + 2] = 0.0
+    ts, traj = simulate(z0, t=8.0, dt=2e-3, u=0.0, n=N_ARMS)
+    animate_trajectory(traj, dt=2e-3, n=N_ARMS, stride=10)
