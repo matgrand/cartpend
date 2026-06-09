@@ -5,19 +5,16 @@ from tqdm import tqdm
 from numpy import pi as π
 
 
+N_ARMS = 3
+U_MAX = 2*80.0
 G = 9.81
 M = 1.0
 LINK_MASS = 0.2
 LINK_LENGTH = 1.0
-N_ARMS = 3
 DT = 1e-3
 T = 10.0
 SHOW_PLOTS = True
-WALL_X = 6.0
-WALL_RESTITUTION = 0.0
-MASS_MISMATCH = 0.01
-MISMATCH_SEED = 10
-
+X_WALL = 6.0
 
 def _vec(x, n):
     x = np.asarray(x, dtype=float)
@@ -30,7 +27,7 @@ def arm_params(n=N_ARMS, m=LINK_MASS, l=LINK_LENGTH):
     return m, l, np.array([np.sum(m[i:]) for i in range(n)])
 
 
-def random_masses(n=N_ARMS, cart_mass=M, link_mass=LINK_MASS, pct=MASS_MISMATCH, seed=MISMATCH_SEED):
+def random_masses(n=N_ARMS, cart_mass=M, link_mass=LINK_MASS, pct=0.0, seed=0):
     rng = np.random.default_rng(seed)
     cart_mass = cart_mass * (1 + rng.uniform(-pct, pct))
     link_mass = _vec(link_mass, n) * (1 + rng.uniform(-pct, pct, n))
@@ -58,7 +55,7 @@ def dynamics(z, u=0.0, n=N_ARMS, cart_mass=M, m=LINK_MASS, l=LINK_LENGTH, g=G):
     return np.r_[dq, ddq]
 
 
-def apply_wall(z, x_wall=WALL_X, restitution=WALL_RESTITUTION, n=N_ARMS):
+def apply_wall(z, x_wall=X_WALL, restitution=0.0, n=N_ARMS):
     z = np.array(z, dtype=float, copy=True); dx_i = n + 1
     if z[0] < -x_wall: z[0] = -x_wall; z[dx_i] = max(-restitution * z[dx_i], 0.0)
     if z[0] > x_wall: z[0] = x_wall; z[dx_i] = min(-restitution * z[dx_i], 0.0)
@@ -79,9 +76,13 @@ def rk4_step(z, dt=DT, u=0.0, f=dynamics, x_wall=None, **kw):
 
 def simulate(z0, t=T, dt=DT, u=0.0, n=N_ARMS, x_wall=None, show_progress=True, **kw):
     """Simulate for t seconds. Returns times, trajectory."""
-    ts = np.arange(0, t + dt, dt); z = np.zeros((len(ts), len(z0))); z[0] = z0
+    ts = np.arange(0, t + dt, dt)
+    if np.isscalar(u): u = np.full(len(ts), float(u))
+    else: u = np.asarray(u, dtype=float)
+    assert len(u) == len(ts), f"len(u) = {len(u)}, len(ts) = {len(ts)}, must be equal or a float"
+    z = np.zeros((len(ts), len(z0))); z[0] = z0
     it = tqdm(range(len(ts) - 1), disable=not show_progress)
-    for k in it: z[k + 1] = rk4_step(z[k], dt, u, t=ts[k], n=n, x_wall=x_wall, **kw)
+    for k in it: z[k + 1] = rk4_step(z[k], dt, u[k], t=ts[k], n=n, x_wall=x_wall, **kw)
     return ts, z
 
 
@@ -92,7 +93,14 @@ def cartesian_points(z, n=N_ARMS, l=LINK_LENGTH):
     return xs, ys
 
 
-def animate_trajectory(traj, dt=DT, n=N_ARMS, l=LINK_LENGTH, u=None, u_scale=0.08, x_wall=WALL_X, stride=20, save=None, show=SHOW_PLOTS):
+def u_seq_random_walk(n_steps, u_max=U_MAX, du_max=1.0):
+    # pert = np.random.uniform(-du_max, du_max, n_steps - 1) # uniform pert
+    pert = np.random.normal(0.0, du_max / 3, n_steps - 1)  # normal pert
+    u_seq = np.zeros(n_steps); u_seq[1:] = np.cumsum(pert); 
+    return np.clip(u_seq, -u_max, u_max)
+
+
+def animate_trajectory(traj, dt=DT, n=N_ARMS, l=LINK_LENGTH, u=None, u_scale=0.08, x_wall=X_WALL, stride=20, save=None, show=SHOW_PLOTS):
     """Animate a full trajectory array returned by simulate."""
     traj = np.asarray(traj); frames = np.arange(0, len(traj), stride); ts = np.arange(len(traj)) * dt
     u = np.zeros(len(traj)) if u is None else np.asarray(u, dtype=float)
@@ -130,5 +138,6 @@ def animate_trajectory(traj, dt=DT, n=N_ARMS, l=LINK_LENGTH, u=None, u_scale=0.0
 
 if __name__ == "__main__":
     z0 = np.zeros(2 * (N_ARMS + 1)); z0[1:N_ARMS+1] = π + np.random.uniform(-0.1, 0.1, N_ARMS); z0[N_ARMS + 2] = 0.0
-    ts, traj = simulate(z0, t=8.0, dt=2e-3, u=0.0, n=N_ARMS)
-    animate_trajectory(traj, dt=2e-3, n=N_ARMS, stride=10)
+    u = u_seq_random_walk(int(T / DT)+1)
+    ts, traj = simulate(z0, t=T, dt=DT, u=u, n=N_ARMS, x_wall=X_WALL)
+    animate_trajectory(traj, dt=DT, n=N_ARMS, u=u, stride=10)

@@ -10,9 +10,7 @@ T = 5.0
 T_CTRL = 1e-2#0.02
 TF = 1.0
 N_HORIZON = 6*25
-U_MAX = 2*80.0
 X_MAX = 4.0
-X_WALL = 6.0
 MASS_MISMATCH = 0.0
 MISMATCH_SEED = 1
 ARM_WEIGHT_MIN = 0.25
@@ -87,7 +85,7 @@ def export_model(n=N_ARMS, cart_mass=cart.M, m=cart.LINK_MASS, l=cart.LINK_LENGT
     return model
 
 
-def make_ocp(n=N_ARMS, tf=TF, n_horizon=N_HORIZON, u_max=U_MAX, x_max=X_MAX):
+def make_ocp(n=N_ARMS, tf=TF, n_horizon=N_HORIZON, u_max=cart.U_MAX, x_max=X_MAX):
     _, _, AcadosOcp, AcadosOcpSolver = _require_acados()
     model = export_model(n); nx = 2 * (n + 1); ny = 3 * n + 3; ny_e = 3 * n + 2
     ocp = AcadosOcp(); ocp.model = model
@@ -112,7 +110,7 @@ def make_ocp(n=N_ARMS, tf=TF, n_horizon=N_HORIZON, u_max=U_MAX, x_max=X_MAX):
 
 
 class NMPC:
-    def __init__(self, n=N_ARMS, tf=TF, n_horizon=N_HORIZON, u_max=U_MAX):
+    def __init__(self, n=N_ARMS, tf=TF, n_horizon=N_HORIZON, u_max=cart.U_MAX):
         self.n, self.u_max = n, u_max
         self.ocp, self.solver = make_ocp(n=n, tf=tf, n_horizon=n_horizon, u_max=u_max)
 
@@ -130,7 +128,7 @@ def simulate_nmpc(z0, n=N_ARMS, t=T, dt=DT, t_ctrl=T_CTRL, mass_mismatch=MASS_MI
     ctrl = NMPC(n=n); z[0] = z0; hold = 0.0; next_ctrl = 0.0
     for k in tqdm(range(len(ts) - 1), disable=not show_progress):
         if ts[k] >= next_ctrl: hold = ctrl(z[k]); next_ctrl += t_ctrl
-        u[k] = hold; z[k + 1] = cart.rk4_step(z[k], dt=dt, u=hold, n=n, cart_mass=plant_cart_mass, m=plant_m, x_wall=X_WALL)
+        u[k] = hold; z[k + 1] = cart.rk4_step(z[k], dt=dt, u=hold, n=n, cart_mass=plant_cart_mass, m=plant_m)
     u[-1] = u[-2]
     return ts, z, u
 
@@ -139,4 +137,4 @@ if __name__ == "__main__":
     n = N_ARMS
     z0 = demo_initial_state(n)
     ts, traj, u = simulate_nmpc(z0, n=n, t=T, dt=DT, t_ctrl=T_CTRL)
-    cart.animate_trajectory(traj, dt=DT, n=n, u=u, u_scale=0.02, x_wall=X_WALL, stride=20)
+    cart.animate_trajectory(traj, dt=DT, n=n, u=u, u_scale=0.02, stride=20)
