@@ -108,7 +108,7 @@ def make_ocp(n=N_ARMS, tf=TF, n_horizon=N_HORIZON, u_max=U_MAX, x_max=X_MAX):
     ocp.solver_options.integrator_type = INTEGRATOR
     ocp.solver_options.nlp_solver_type = NLP_SOLVER
     ocp.solver_options.globalization = "MERIT_BACKTRACKING"
-    return ocp, AcadosOcpSolver(ocp, json_file=f"acados_ocp_{model.name}.json", verbose=False)
+    return ocp, AcadosOcpSolver(ocp, json_file=f"c_generated_code/acados_ocp_{model.name}.json", verbose=False)
 
 
 class NMPC:

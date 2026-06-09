@@ -120,7 +120,7 @@ def animate_trajectory(traj, dt=DT, n=N_ARMS, l=LINK_LENGTH, u=None, u_scale=0.0
         for marker in markers: marker.set_xdata([ts[frames[k]], ts[frames[k]]])
         return line, cart, ctrl, *markers
 
-    anim = FuncAnimation(fig, update, frames=len(pts), interval=1000 * dt * stride, blit=False)
+    anim = FuncAnimation(fig, update, frames=len(pts), interval=1000 * dt * stride, blit=True)
     plt.tight_layout()
     if save is not None: anim.save(save); print(f"saved animation to {save}")
     if show: plt.show()
