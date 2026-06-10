@@ -1,3 +1,6 @@
 *.json
 c_generated_code/*
 __pycache__/*
+imgs/*
+tests/__pycache__/*
+tests/imgs/*
