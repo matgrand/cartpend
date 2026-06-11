@@ -77,6 +77,10 @@ def make_dataset(n_traj=N_TRAJ, T=T_END, n_steps=N_STEPS, u_max=U_MAX, seed=SEED
 
     return torch.stack(traj, dim=0), u, t
 
+def rel_l2_loss(pred, target, eps=1e-8) -> torch.Tensor:
+    """Per-sample relative L2, averaged over batch."""
+    return ((pred - target).norm(dim=(1, 2)) / (target.norm(dim=(1, 2)) + eps)).mean()
+
 
 class Swish(nn.Module):
     def __init__(self, no=1):
@@ -130,7 +134,8 @@ def train(n_epochs=N_EPOCHS, batch_size=BATCH_SIZE, lr=LR):
         ode_func._u = u_all[idx]
         pred = odeint(ode_func, x0_b, t, method="rk4")
 
-        loss = nn.functional.mse_loss(pred, tgt)
+        # loss = nn.functional.mse_loss(pred, tgt)
+        loss = rel_l2_loss(pred, tgt)
         opt.zero_grad()
         loss.backward()
         opt.step()
