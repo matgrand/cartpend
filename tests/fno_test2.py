@@ -20,8 +20,8 @@ IN_CH   = STATE_DIM + ACT_DIM   # 5
 
 # FNO architecture
 N_MODES    = 12      # < N_STEPS/2 to stay in Nyquist limit, avoids aliased nonlinear modes
-HIDDEN     = 64
-N_LAYERS   = 4
+HIDDEN     = 64 #64
+N_LAYERS   = 2 #4
 
 # Training
 N_EPOCHS   = 10000
