@@ -11,8 +11,8 @@ CART_MASS, POLE_MASS, POLE_HALF, GRAVITY = 1.0, 0.1, 0.5, 9.81
 
 # Dataset
 N_TRAJ  = 64 * 512 * 10
-T_END   = 1.0
-N_STEPS = 130      # trajectory has N_STEPS+1 time points
+T_END   = 1.0 *2
+N_STEPS = 130 *2      # trajectory has N_STEPS+1 time points
 U_MAX   = 5.0
 SEED    = 42
 STATE_DIM, ACT_DIM = 4, 1
